@@ -2329,6 +2329,36 @@ class Program
         }
 
         [ConditionalFact(typeof(CoreClrOnly))]
+        public void TestIndexers_ExpandedConstants()
+        {
+            string source = @"
+using System;
+using System.Runtime.CompilerServices;
+
+class Program
+{
+    const string i = nameof(i);
+    public int this[int i, [CallerArgumentExpression(i)] string s = ""<default-arg>""]
+    {
+        get => i;
+        set => Console.WriteLine($""{i}, {s}"");
+    }
+
+    public static void Main()
+    {
+        const int indexOffset = 1;
+        new Program()[1+  indexOffset] = 5;
+        new Program()[2+  2, ""explicit-value""] = 5;
+    }
+}
+";
+
+            var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: @"2, 1+  1
+4, explicit-value").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
         public void TestDelegate()
         {
             string source = @"
