@@ -2329,7 +2329,7 @@ class Program
         }
 
         [ConditionalFact(typeof(CoreClrOnly))]
-        public void TestIndexers_ExpandedConstants()
+        public void TestIndexers_ExpandedConstants_Int()
         {
             string source = @"
 using System;
@@ -2356,6 +2356,35 @@ class Program
             var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
             CompileAndVerify(compilation, expectedOutput: @"2, 1+  1
 4, explicit-value").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
+        public void TestFunc_ExpandedConstants_String()
+        {
+            string source = @"
+using System;
+using System.Runtime.CompilerServices;
+
+class Program
+{
+    public static int Test(string i, [CallerArgumentExpression(""i"")] string s = ""<default-arg>"")
+    {
+        Console.WriteLine($""{i}, {s}"");
+        return 1;
+    }
+
+    public static void Main()
+    {
+        const string indexOffset = ""test_val"";
+        Test(""2""+ indexOffset);
+        Test(""4"" + indexOffset, ""explicit-value"");
+    }
+}
+";
+
+            var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: @"2test_val, ""2""+ ""test_val""
+4test_val, explicit-value").VerifyDiagnostics();
         }
 
         [ConditionalFact(typeof(CoreClrOnly))]

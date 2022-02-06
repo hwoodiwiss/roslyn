@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
+using System.Text;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.PooledObjects;
@@ -1386,7 +1388,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 else if (callerSourceLocation is object && getArgumentIndex(parameter.CallerArgumentExpressionParameterIndex, argsToParamsOpt) is int argumentIndex &&
                     argumentIndex > -1 && argumentIndex < argumentsCount)
                 {
-                    var evalExpressionConstants = false;
+                    var evalExpressionConstants = true;
                     var argument = argumentsBuilder[argumentIndex];
                     if (!evalExpressionConstants)
                     {
@@ -1395,7 +1397,22 @@ namespace Microsoft.CodeAnalysis.CSharp
                     }
                     else
                     {
-                        defaultValue = new BoundLiteral(syntax, ConstantValue.Create(argument.Syntax.ToString()),
+                        var expressionString = argument.Syntax.ToString();
+                        foreach (var symbol in argument.Syntax.ChildNodes())
+                        {
+                            if (symbol is IdentifierNameSyntax idSymbol)
+                            {
+                                var idSymbolString = idSymbol.ToString();
+                                var bound = this.BindIdentifier(idSymbol, false, false, diagnostics);
+                                if (bound.ConstantValue is not null)
+                                {
+                                    var constantString = bound.ConstantValue.GetValueToDisplay();
+                                    expressionString = expressionString.Replace(idSymbolString, constantString);
+                                }
+                            }
+                        }
+
+                        defaultValue = new BoundLiteral(syntax, ConstantValue.Create(expressionString),
                                 Compilation.GetSpecialType(SpecialType.System_String))
                             { WasCompilerGenerated = true };
                     }
