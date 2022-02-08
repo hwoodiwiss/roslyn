@@ -1399,15 +1399,14 @@ namespace Microsoft.CodeAnalysis.CSharp
                     {
                         var expressionString = argument.Syntax.ToString();
                         var resolvedSymbols = new HashSet<IdentifierNameSyntax>();
-                        var localDefinedSymbols = new HashSet<IdentifierNameSyntax>();
-                        foreach (var symbol in argument.Syntax.DescendantNodesAndSelf())
+                        var localDefinedSymbols = new HashSet<string>();
+                        var t = argument.Syntax.DescendantNodesAndTokensAndSelf().ToList();
+                        foreach (var token in argument.Syntax.DescendantTokens().Where(w => w.IsKind(SyntaxKind.IdentifierToken)))
                         {
-                            if(symbol is LocalDeclarationStatementSyntax localDeclaration)
-
-                            if (symbol is IdentifierNameSyntax idSymbol)
+                            if (token.Parent is IdentifierNameSyntax idSymbol && !idSymbol.IsVar)
                             {
                                 if (resolvedSymbols.Contains(idSymbol)) continue;
-                                if (localDefinedSymbols.Contains(idSymbol)) continue;
+                                if (localDefinedSymbols.Contains(idSymbol.ToString())) continue;
                                 var idSymbolString = idSymbol.ToString();
                                 var bound = this.BindIdentifier(idSymbol, false, false, diagnostics);
                                 if (bound.ConstantValue is not null)
@@ -1416,6 +1415,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                                     expressionString = expressionString.Replace(idSymbolString, constantString);
                                 }
                                 resolvedSymbols.Add(idSymbol);
+                            }
+                            else
+                            {
+                                localDefinedSymbols.Add(token.Text);
                             }
                         }
 
