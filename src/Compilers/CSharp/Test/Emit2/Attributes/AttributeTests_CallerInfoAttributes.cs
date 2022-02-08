@@ -2388,6 +2388,72 @@ class Program
         }
 
         [ConditionalFact(typeof(CoreClrOnly))]
+        public void TestFunc_ExpandedConstantsLambda_String()
+        {
+            string source = @"
+using System;
+using System.Runtime.CompilerServices;
+
+class Program
+{
+    public static int Test(Func<string> i, [CallerArgumentExpression(""i"")] string s = ""<default-arg>"")
+    {
+        var a = i();
+        Console.WriteLine($""{a}, {s}"");
+        return 1;
+    }
+
+    public static void Main()
+    {
+        const string indexOffset = ""test_val"";
+        Test(() => ""2""+ indexOffset);
+        Test(() => ""4"" + indexOffset, ""explicit-value"");
+    }
+}
+";
+            var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: @"2test_val, () => ""2""+ ""test_val""
+4test_val, explicit-value").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
+        public void TestFunc_ExpandedConstantsLambdaExpertDifficulty_String()
+        {
+            string source = @"
+using System;
+using System.Runtime.CompilerServices;
+
+class Program
+{
+    public static int Test(Func<string> i, [CallerArgumentExpression(""i"")] string s = ""<default-arg>"")
+    {
+        string a = i();
+        Console.WriteLine($""{a}, {s}"");
+        return 1;
+    }
+
+    public static void Main()
+    {
+        const string testString = ""test_val"";
+        const int testInt = 1;
+        const float testFloat = 1.12345f;
+        Test(() => {
+                        string outPut = ""2""+ testString + testInt.ToString() + testFloat.ToString();
+                        return outPut;
+                   });
+        Test(() => ""4"" + testString, ""explicit-value"");
+    }
+}
+";
+            var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: @"2test_val11.12345, () => {
+                        var b = ""2""+ ""test_val"" + 1.ToString() + 1.12345.ToString();
+                        return b;
+                   }
+4test_val, explicit-value").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
         public void TestDelegate()
         {
             string source = @"

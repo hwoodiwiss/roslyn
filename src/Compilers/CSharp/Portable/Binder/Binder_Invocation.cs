@@ -1398,10 +1398,16 @@ namespace Microsoft.CodeAnalysis.CSharp
                     else
                     {
                         var expressionString = argument.Syntax.ToString();
-                        foreach (var symbol in argument.Syntax.ChildNodes())
+                        var resolvedSymbols = new HashSet<IdentifierNameSyntax>();
+                        var localDefinedSymbols = new HashSet<IdentifierNameSyntax>();
+                        foreach (var symbol in argument.Syntax.DescendantNodesAndSelf())
                         {
+                            if(symbol is LocalDeclarationStatementSyntax localDeclaration)
+
                             if (symbol is IdentifierNameSyntax idSymbol)
                             {
+                                if (resolvedSymbols.Contains(idSymbol)) continue;
+                                if (localDefinedSymbols.Contains(idSymbol)) continue;
                                 var idSymbolString = idSymbol.ToString();
                                 var bound = this.BindIdentifier(idSymbol, false, false, diagnostics);
                                 if (bound.ConstantValue is not null)
@@ -1409,6 +1415,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                                     var constantString = bound.ConstantValue.GetValueToDisplay();
                                     expressionString = expressionString.Replace(idSymbolString, constantString);
                                 }
+                                resolvedSymbols.Add(idSymbol);
                             }
                         }
 
