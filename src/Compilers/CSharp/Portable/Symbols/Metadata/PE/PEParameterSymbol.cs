@@ -697,7 +697,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Metadata.PE
 
                 if (isCallerArgumentExpression)
                 {
-                    _moduleSymbol.Module.TryExtractStringValueFromAttribute(info.Handle, out var parameterName);
+                    _moduleSymbol.Module.TryExtractStringAndBoolValueFromAttribute(info.Handle, out var parameterName, out var _);
                     var parameters = ContainingSymbol.GetParameters();
                     for (int i = 0; i < parameters.Length; i++)
                     {
@@ -733,10 +733,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Metadata.PE
 
                 if (isCallerArgumentExpression)
                 {
-                    throw new NotImplementedException();
+                    _moduleSymbol.Module.TryExtractStringAndBoolValueFromAttribute(info.Handle, out var _, out var resolveConstants);
+                    _lazyCallerArgumentExpressionResolveConstants = resolveConstants;
+                    return resolveConstants;
                 }
 
-                _lazyCallerArgumentExpressionParameterIndex = -1;
+                _lazyCallerArgumentExpressionResolveConstants = false;
                 return false;
             }
         }

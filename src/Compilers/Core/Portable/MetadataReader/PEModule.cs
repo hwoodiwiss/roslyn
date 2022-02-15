@@ -101,6 +101,7 @@ namespace Microsoft.CodeAnalysis
         private static readonly AttributeValueExtractor<ObsoleteAttributeData?> s_attributeDeprecatedDataExtractor = CrackDeprecatedAttributeData;
         private static readonly AttributeValueExtractor<BoolAndStringArrayData> s_attributeBoolAndStringArrayValueExtractor = CrackBoolAndStringArrayInAttributeValue;
         private static readonly AttributeValueExtractor<BoolAndStringData> s_attributeBoolAndStringValueExtractor = CrackBoolAndStringInAttributeValue;
+        private static readonly AttributeValueExtractor<BoolAndStringData> s_attributeStringAndBoolValueExtractor = CrackStringAndBoolInAttributeValue;
 
         internal struct BoolAndStringArrayData
         {
@@ -1649,6 +1650,14 @@ namespace Microsoft.CodeAnalysis
             return TryExtractValueFromAttribute(handle, out value, s_attributeStringValueExtractor);
         }
 
+        internal bool TryExtractStringAndBoolValueFromAttribute(CustomAttributeHandle handle, out string? stringValue, out bool boolValue)
+        {
+            var result = TryExtractValueFromAttribute(handle, out var value, s_attributeStringAndBoolValueExtractor);
+            stringValue = value.String;
+            boolValue = value.Sense;
+            return result;
+        }
+
         internal bool TryExtractLongValueFromAttribute(CustomAttributeHandle handle, out long value)
         {
             return TryExtractValueFromAttribute(handle, out value, s_attributeLongValueExtractor);
@@ -1960,6 +1969,19 @@ namespace Microsoft.CodeAnalysis
         {
             if (CrackBooleanInAttributeValue(out bool sense, ref sig) &&
                 CrackStringInAttributeValue(out string? @string, ref sig))
+            {
+                value = new BoolAndStringData(sense, @string);
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        internal static bool CrackStringAndBoolInAttributeValue(out BoolAndStringData value, ref BlobReader sig)
+        {
+            if (CrackStringInAttributeValue(out string? @string, ref sig) &&
+                CrackBooleanInAttributeValue(out bool sense, ref sig))
             {
                 value = new BoolAndStringData(sense, @string);
                 return true;
