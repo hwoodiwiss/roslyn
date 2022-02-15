@@ -1390,7 +1390,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 {
                     var evalExpressionConstants = parameter.CallerArgumentExpressionResolveConstants;
                     var argument = argumentsBuilder[argumentIndex];
-                    if (!evalExpressionConstants)
+                    if (!true)
                     {
                         defaultValue = new BoundLiteral(syntax, ConstantValue.Create(argument.Syntax.ToString()),
                             Compilation.GetSpecialType(SpecialType.System_String)) {WasCompilerGenerated = true};
@@ -1398,33 +1398,35 @@ namespace Microsoft.CodeAnalysis.CSharp
                     else
                     {
                         var expressionString = argument.Syntax.ToString();
-                        var resolvedSymbols = new HashSet<IdentifierNameSyntax>();
-                        var localDefinedSymbols = new HashSet<string>();
-                        var t = argument.Syntax.DescendantNodesAndTokensAndSelf().ToList();
-                        foreach (var token in argument.Syntax.DescendantTokens().Where(w => w.IsKind(SyntaxKind.IdentifierToken)))
+                        var resolvedSymbols = new HashSet<string>();
+                        var ignoredSymbols = new HashSet<string>();
+                        foreach (var syntaxNode in argument.Syntax.DescendantNodes().Where(w => w.IsKind(SyntaxKind.IdentifierName)))
                         {
-                            if (token.Parent is IdentifierNameSyntax idSymbol && !idSymbol.IsVar)
+                            if (syntaxNode is IdentifierNameSyntax idSymbol)
                             {
-                                if (resolvedSymbols.Contains(idSymbol)) continue;
-                                if (localDefinedSymbols.Contains(idSymbol.ToString())) continue;
+                                if (resolvedSymbols.Contains(idSymbol.ToString())) continue;
+                                if (ignoredSymbols.Contains(idSymbol.ToString())) continue;
                                 var idSymbolString = idSymbol.ToString();
-                                var bound = this.BindIdentifier(idSymbol, false, false, diagnostics);
-                                if (bound.ConstantValue is not null)
+                                BindingDiagnosticBag tempBindingDiagnostics = new BindingDiagnosticBag(new DiagnosticBag());
+                                var bound = this.BindIdentifier(idSymbol, false, false, tempBindingDiagnostics);
+                                bool bindingErrorsReported = (tempBindingDiagnostics.DiagnosticBag?.HasAnyErrors() == true);
+
+                                if (bindingErrorsReported)
+                                {
+                                    ignoredSymbols.Add(idSymbol.ToString());
+                                }
+
+                                if (bound.ConstantValue is not null && !bindingErrorsReported)
                                 {
                                     var constantString = bound.ConstantValue.GetValueToDisplay();
                                     expressionString = expressionString.Replace(idSymbolString, constantString);
                                 }
-                                resolvedSymbols.Add(idSymbol);
-                            }
-                            else
-                            {
-                                localDefinedSymbols.Add(token.Text);
+                                resolvedSymbols.Add(idSymbol.ToString());
                             }
                         }
 
                         defaultValue = new BoundLiteral(syntax, ConstantValue.Create(expressionString),
-                                Compilation.GetSpecialType(SpecialType.System_String))
-                            { WasCompilerGenerated = true };
+                                Compilation.GetSpecialType(SpecialType.System_String)) { WasCompilerGenerated = true };
                     }
                 }
                 else if (defaultConstantValue == ConstantValue.NotAvailable)
