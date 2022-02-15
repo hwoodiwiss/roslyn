@@ -392,6 +392,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override int CallerArgumentExpressionParameterIndex => _underlyingParameter.CallerArgumentExpressionParameterIndex;
 
+        internal override bool CallerArgumentExpressionResolveConstants => _underlyingParameter.CallerArgumentExpressionResolveConstants;
+
         internal override ImmutableArray<int> InterpolatedStringHandlerArgumentIndexes => _underlyingParameter.InterpolatedStringHandlerArgumentIndexes;
 
         internal override bool HasInterpolatedStringHandlerArgumentError => _underlyingParameter.HasInterpolatedStringHandlerArgumentError;

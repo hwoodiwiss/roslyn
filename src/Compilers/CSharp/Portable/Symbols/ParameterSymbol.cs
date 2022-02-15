@@ -399,6 +399,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         internal abstract bool IsCallerMemberName { get; }
 
         internal abstract int CallerArgumentExpressionParameterIndex { get; }
+        internal abstract bool CallerArgumentExpressionResolveConstants { get; }
 
         internal abstract FlowAnalysisAnnotations FlowAnalysisAnnotations { get; }
 

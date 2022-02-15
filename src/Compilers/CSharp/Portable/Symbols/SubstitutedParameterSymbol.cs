@@ -98,6 +98,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             get { return _underlyingParameter.CallerArgumentExpressionParameterIndex; }
         }
 
+        internal override bool CallerArgumentExpressionResolveConstants
+        {
+            get { return _underlyingParameter.CallerArgumentExpressionResolveConstants; }
+        }
+
         public sealed override bool Equals(Symbol obj, TypeCompareKind compareKind)
         {
             if ((object)this == obj)

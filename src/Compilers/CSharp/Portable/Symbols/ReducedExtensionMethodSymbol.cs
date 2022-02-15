@@ -649,6 +649,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 get { throw ExceptionUtilities.Unreachable; }
             }
 
+            internal override bool CallerArgumentExpressionResolveConstants
+            {
+                // ReducedExtensionMethodParameterSymbol is only exposed to semantic model.
+                get { throw ExceptionUtilities.Unreachable; }
+            }
+
             internal override ImmutableArray<int> InterpolatedStringHandlerArgumentIndexes => throw ExceptionUtilities.Unreachable;
 
             internal override bool HasInterpolatedStringHandlerArgumentError => throw ExceptionUtilities.Unreachable;

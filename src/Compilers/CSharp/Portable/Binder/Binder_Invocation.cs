@@ -1388,7 +1388,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 else if (callerSourceLocation is object && getArgumentIndex(parameter.CallerArgumentExpressionParameterIndex, argsToParamsOpt) is int argumentIndex &&
                     argumentIndex > -1 && argumentIndex < argumentsCount)
                 {
-                    var evalExpressionConstants = true;
+                    var evalExpressionConstants = parameter.CallerArgumentExpressionResolveConstants;
                     var argument = argumentsBuilder[argumentIndex];
                     if (!evalExpressionConstants)
                     {

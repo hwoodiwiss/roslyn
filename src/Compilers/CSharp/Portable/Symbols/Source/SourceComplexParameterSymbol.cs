@@ -128,6 +128,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
         }
 
+        internal override bool CallerArgumentExpressionResolveConstants
+        {
+            get
+            {
+                return GetEarlyDecodedWellKnownAttributeData()?.CallerArgumentExpressionResolveConstants ?? false;
+            }
+        }
+
         internal override ImmutableArray<int> InterpolatedStringHandlerArgumentIndexes
             => (GetDecodedWellKnownAttributeData()?.InterpolatedStringHandlerArguments).NullToEmpty();
 
@@ -622,7 +630,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     if (!attributeData.HasErrors)
                     {
                         var constructorArguments = attributeData.CommonConstructorArguments;
-                        Debug.Assert(constructorArguments.Length == 1);
+                        var numArgs = constructorArguments.Length;
+                        Debug.Assert(numArgs == 1 || numArgs == 2);
                         if (constructorArguments[0].TryDecodeValue(SpecialType.System_String, out string? parameterName))
                         {
                             var parameters = ContainingSymbol.GetParameters();
@@ -634,6 +643,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                                     break;
                                 }
                             }
+                        }
+
+                        if (numArgs == 2 && constructorArguments[1].TryDecodeValue(SpecialType.System_Boolean, out bool resolveConstants))
+                        {
+                            arguments.GetOrCreateData<ParameterEarlyWellKnownAttributeData>()
+                                .CallerArgumentExpressionResolveConstants = resolveConstants;
                         }
                     }
 

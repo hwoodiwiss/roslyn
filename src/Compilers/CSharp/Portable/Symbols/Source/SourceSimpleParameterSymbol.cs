@@ -104,6 +104,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             get { return -1; }
         }
 
+        internal override bool CallerArgumentExpressionResolveConstants
+        {
+            get { return false; }
+        }
+
         internal override ImmutableArray<int> InterpolatedStringHandlerArgumentIndexes => ImmutableArray<int>.Empty;
 
         internal override bool HasInterpolatedStringHandlerArgumentError => false;

@@ -22,6 +22,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override int CallerArgumentExpressionParameterIndex => _originalParam.CallerArgumentExpressionParameterIndex;
 
+        internal override bool CallerArgumentExpressionResolveConstants => _originalParam.CallerArgumentExpressionResolveConstants;
+
         internal override ParameterSymbol WithCustomModifiersAndParams(TypeSymbol newType, ImmutableArray<CustomModifier> newCustomModifiers, ImmutableArray<CustomModifier> newRefCustomModifiers, bool newIsParams)
         {
             return new SourcePropertyClonedParameterSymbolForAccessors(

@@ -152,6 +152,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Metadata.PE
         private int _lazyCallerArgumentExpressionParameterIndex = -2;
 
         /// <summary>
+        /// Whether CallerArgumentExpression should attempt to resolve constants. The value null means uninitialized.
+        /// Otherwise, the value to use when determining whether to resolve constants.
+        /// </summary>        
+        private bool? _lazyCallerArgumentExpressionResolveConstants = null;
+
+        /// <summary>
         /// Attributes filtered out from m_lazyCustomAttributes, ParamArray, etc.
         /// </summary>
         private ImmutableArray<CSharpAttributeData> _lazyHiddenAttributes;
@@ -705,6 +711,33 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Metadata.PE
 
                 _lazyCallerArgumentExpressionParameterIndex = -1;
                 return -1;
+            }
+        }
+
+        internal override bool CallerArgumentExpressionResolveConstants
+        {
+            get
+            {
+                if (_lazyCallerArgumentExpressionResolveConstants != null)
+                {
+                    return _lazyCallerArgumentExpressionResolveConstants.Value;
+                }
+
+                var info = _moduleSymbol.Module.FindTargetAttribute(_handle, AttributeDescription.CallerArgumentExpressionAttribute);
+                var discardedUseSiteInfo = CompoundUseSiteInfo<AssemblySymbol>.Discarded;
+                bool isCallerArgumentExpression = info.HasValue
+                                                  && !HasCallerLineNumberAttribute
+                                                  && !HasCallerFilePathAttribute
+                                                  && !HasCallerMemberNameAttribute
+                                                  && new TypeConversions(ContainingAssembly).HasCallerInfoStringConversion(this.Type, ref discardedUseSiteInfo);
+
+                if (isCallerArgumentExpression)
+                {
+                    throw new NotImplementedException();
+                }
+
+                _lazyCallerArgumentExpressionParameterIndex = -1;
+                return false;
             }
         }
 

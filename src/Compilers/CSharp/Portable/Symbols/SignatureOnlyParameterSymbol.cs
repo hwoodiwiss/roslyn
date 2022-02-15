@@ -74,6 +74,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override int CallerArgumentExpressionParameterIndex { get { throw ExceptionUtilities.Unreachable; } }
 
+        internal override bool CallerArgumentExpressionResolveConstants { get { throw ExceptionUtilities.Unreachable; } }
+
         internal override FlowAnalysisAnnotations FlowAnalysisAnnotations { get { throw ExceptionUtilities.Unreachable; } }
 
         internal override ImmutableHashSet<string> NotNullIfParameterNotNull { get { throw ExceptionUtilities.Unreachable; } }

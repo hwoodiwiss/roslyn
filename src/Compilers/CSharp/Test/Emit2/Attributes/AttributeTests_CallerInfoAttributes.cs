@@ -2392,11 +2392,26 @@ class Program
         {
             string source = @"
 using System;
-using System.Runtime.CompilerServices;
+namespace System.Runtime.CompilerServices
+{
+    
+    public class CallerArgumentExpressionAttribute : Attribute
+    {
+    
+        public CallerArgumentExpressionAttribute(string parameterName, bool resolveConstants = false)
+        {
+            this.ParameterName = parameterName;
+            this.ResolveConstants = resolveConstants;
+        }
+
+        string ParameterName;
+        bool ResolveConstants;
+
+    }
 
 class Program
 {
-    public static int Test(Func<string> i, [CallerArgumentExpression(""i"")] string s = ""<default-arg>"")
+    public static int Test(Func<string> i, [CallerArgumentExpression(""i"", true)] string s = ""<default-arg>"")
     {
         var a = i();
         Console.WriteLine($""{a}, {s}"");
@@ -2410,6 +2425,9 @@ class Program
         Test(() => ""4"" + indexOffset, ""explicit-value"");
     }
 }
+}
+
+
 ";
             var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
             CompileAndVerify(compilation, expectedOutput: @"2test_val, () => ""2""+ ""test_val""

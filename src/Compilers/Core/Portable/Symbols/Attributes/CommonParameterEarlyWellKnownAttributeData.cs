@@ -96,6 +96,22 @@ namespace Microsoft.CodeAnalysis
                 SetDataStored();
             }
         }
+
+        private bool _argumentExpressionResolveConstants = false;
+        public bool CallerArgumentExpressionResolveConstants
+        {
+            get
+            {
+                VerifySealed(expected: true);
+                return _argumentExpressionResolveConstants;
+            }
+            set
+            {
+                VerifySealed(expected: false);
+                _argumentExpressionResolveConstants = value;
+                SetDataStored();
+            }
+        }
         #endregion
     }
 }

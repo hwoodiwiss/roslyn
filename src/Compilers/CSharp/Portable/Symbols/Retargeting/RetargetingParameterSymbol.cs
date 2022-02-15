@@ -173,6 +173,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Retargeting
         {
             get { return _underlyingParameter.CallerArgumentExpressionParameterIndex; }
         }
+
+        internal override bool CallerArgumentExpressionResolveConstants
+        {
+            get { return _underlyingParameter.CallerArgumentExpressionResolveConstants; }
+        }
     }
 
     internal sealed class RetargetingPropertyParameterSymbol : RetargetingParameterSymbol
@@ -212,6 +217,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Retargeting
         internal override int CallerArgumentExpressionParameterIndex
         {
             get { return _underlyingParameter.CallerArgumentExpressionParameterIndex; }
+        }
+
+        internal override bool CallerArgumentExpressionResolveConstants
+        {
+            get { return _underlyingParameter.CallerArgumentExpressionResolveConstants; }
         }
     }
 }
