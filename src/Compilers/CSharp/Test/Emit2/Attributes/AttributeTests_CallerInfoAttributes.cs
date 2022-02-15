@@ -2457,6 +2457,7 @@ class Program
         const float testFloat = 1.12345f;
         Test(() => {
                         var outPut = ""2""+ testString + testInt.ToString() + testFloat.ToString();
+                        var otherVar = testString + testInt.ToString();
                         return outPut;
                    });
         Test(() => ""4"" + testString, ""explicit-value"");
@@ -2466,6 +2467,7 @@ class Program
             var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
             CompileAndVerify(compilation, expectedOutput: @"2test_val11.12345, () => {
                         var outPut = ""2""+ ""test_val"" + 1.ToString() + 1.12345.ToString();
+                        var otherVar = ""test_val"" + 1.ToString();
                         return outPut;
                    }
 4test_val, explicit-value").VerifyDiagnostics();
