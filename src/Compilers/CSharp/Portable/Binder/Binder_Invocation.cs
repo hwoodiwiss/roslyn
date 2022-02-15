@@ -1390,7 +1390,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 {
                     var evalExpressionConstants = parameter.CallerArgumentExpressionResolveConstants;
                     var argument = argumentsBuilder[argumentIndex];
-                    if (!true)
+                    if (!evalExpressionConstants)
                     {
                         defaultValue = new BoundLiteral(syntax, ConstantValue.Create(argument.Syntax.ToString()),
                             Compilation.GetSpecialType(SpecialType.System_String)) {WasCompilerGenerated = true};
