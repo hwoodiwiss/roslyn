@@ -1400,7 +1400,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         var expressionString = argument.Syntax.ToString();
                         var resolvedSymbols = new HashSet<string>();
                         var ignoredSymbols = new HashSet<string>();
-                        foreach (var syntaxNode in argument.Syntax.DescendantNodes().Where(w => w.IsKind(SyntaxKind.IdentifierName)))
+                        foreach (var syntaxNode in argument.Syntax.DescendantNodesAndSelf().Where(w => w.IsKind(SyntaxKind.IdentifierName)))
                         {
                             if (syntaxNode is IdentifierNameSyntax idSymbol)
                             {
