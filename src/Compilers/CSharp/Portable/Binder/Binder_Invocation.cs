@@ -1404,24 +1404,25 @@ namespace Microsoft.CodeAnalysis.CSharp
                         {
                             if (syntaxNode is IdentifierNameSyntax idSymbol)
                             {
-                                if (resolvedSymbols.Contains(idSymbol.ToString())) continue;
-                                if (ignoredSymbols.Contains(idSymbol.ToString())) continue;
                                 var idSymbolString = idSymbol.ToString();
+
+                                if (resolvedSymbols.Contains(idSymbolString)) continue;
+                                if (ignoredSymbols.Contains(idSymbolString)) continue;
                                 BindingDiagnosticBag tempBindingDiagnostics = new BindingDiagnosticBag(new DiagnosticBag());
                                 var bound = this.BindIdentifier(idSymbol, false, false, tempBindingDiagnostics);
-                                bool bindingErrorsReported = (tempBindingDiagnostics.DiagnosticBag?.HasAnyErrors() == true);
 
-                                if (bindingErrorsReported)
+                                if (bound.HasAnyErrors)
                                 {
-                                    ignoredSymbols.Add(idSymbol.ToString());
+                                    ignoredSymbols.Add(idSymbolString);
+                                    continue;
                                 }
 
-                                if (bound.ConstantValue is not null && !bindingErrorsReported)
+                                if (bound.ConstantValue is not null)
                                 {
                                     var constantString = bound.ConstantValue.GetValueToDisplay();
                                     expressionString = expressionString.Replace(idSymbolString, constantString);
                                 }
-                                resolvedSymbols.Add(idSymbol.ToString());
+                                resolvedSymbols.Add(idSymbolString);
                             }
                         }
 
