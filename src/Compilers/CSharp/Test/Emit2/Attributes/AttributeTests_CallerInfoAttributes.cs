@@ -416,6 +416,55 @@ class Program
             CompileAndVerify(compilation, expectedOutput: "123").VerifyDiagnostics();
         }
 
+        [ConditionalTheory(typeof(CoreClrOnly))]
+        [InlineData("string", @"""testValue""", null)]
+        [InlineData("char", "'t'", "t")]
+        [InlineData("int", "123", null)]
+        [InlineData("long", "99999999999999", null)]
+        [InlineData("float", "1.127f", "1.127")]
+        [InlineData("double", "1.00000000127d", "1.00000000127")]
+        public void TestGoodCallerArgumentExpressionAttribute_ResolveConstants(string constType, string constValue, string constDisplay)
+        {
+            constDisplay ??= constValue;
+            string source = @$"
+using System;
+using System.Runtime.CompilerServices;
+
+namespace System.Runtime.CompilerServices
+{{
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    public sealed class CallerArgumentExpressionAttribute : Attribute
+    {{
+        public CallerArgumentExpressionAttribute(string parameterName, bool resolveConstants)
+        {{
+            ParameterName = parameterName;
+            ResolveConstants = resolveConstants;
+        }}
+        public string ParameterName {{ get; }}
+        public bool ResolveConstants {{ get; }}
+    }}
+}}
+
+class Program
+{{
+    const {constType} logP1Value = {constValue};
+
+    public static void Main()
+    {{
+        Log(logP1Value);
+    }}
+    const string p1 = nameof(p1);
+    static void Log({constType} p1, [CallerArgumentExpression(p1, true)] string arg = ""<default-arg>"")
+    {{
+        Console.WriteLine(arg);
+    }}
+}}
+";
+
+            var compilation = CreateCompilation(source, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: constDisplay).VerifyDiagnostics();
+        }
+
         [ConditionalFact(typeof(CoreClrOnly))]
         public void TestGoodCallerArgumentExpressionAttribute_MultipleAttributes()
         {
@@ -454,6 +503,7 @@ class Program
             var compilation = CreateCompilation(source, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
             CompileAndVerify(compilation, expectedOutput: "456").VerifyDiagnostics();
         }
+
 
         [ConditionalFact(typeof(CoreClrOnly))]
         public void TestGoodCallerArgumentExpressionAttribute_MultipleAttributes_IncorrectCtor()
@@ -5811,6 +5861,26 @@ using System.Runtime.CompilerServices;
 M(1 + 1);
 
 void M(int i, [CallerArgumentExpression(""i"")] in string s = ""default value"")
+{
+    Console.WriteLine(s);
+}
+", targetFramework: TargetFramework.NetCoreApp);
+
+            CompileAndVerify(comp, expectedOutput: "1 + 1").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
+        public void CallerArgumentExpression_OnRefParameter04()
+        {
+            var comp = CreateCompilation(@"
+using System;
+using System.Runtime.CompilerServices;
+
+const int addValue = 1;
+
+M(1 + addValue);
+
+void M(int i, [CallerArgumentExpression(""i"", true)] in string s = ""default value"")
 {
     Console.WriteLine(s);
 }
