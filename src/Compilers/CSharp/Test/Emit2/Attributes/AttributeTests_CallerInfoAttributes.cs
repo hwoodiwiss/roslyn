@@ -483,67 +483,6 @@ class Program
         }
 
         [ConditionalFact(typeof(CoreClrOnly))]
-        public void TestFunc_ExpandedConstantsLambdaExpertDifficulty_String()
-        {
-            string source = @"
-using System;
-using System.Runtime.CompilerServices;
-
-namespace System.Runtime.CompilerServices
-{
-    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
-    public sealed class CallerArgumentExpressionAttribute : Attribute
-    {
-        public CallerArgumentExpressionAttribute(string parameterName)
-        {
-            ParameterName = parameterName;
-            ResolveConstants = false;
-        }
-
-        public CallerArgumentExpressionAttribute(string parameterName, bool resolveConstants)
-        {
-            ParameterName = parameterName;
-            ResolveConstants = resolveConstants;
-        }
-        public string ParameterName { get; }
-        public bool ResolveConstants { get; }
-    }
-}
-
-class Program
-{
-    const string i = nameof(i);
-    public static int Test(Func<string> i, [CallerArgumentExpression(i, true)] string s = ""<default-arg>"")
-    {
-        string a = i();
-        Console.WriteLine($""{a}, {s}"");
-        return 1;
-    }
-
-    public static void Main()
-    {
-        const string testString = ""test_val"";
-        const int testInt = 1;
-        const float testFloat = 1.12345f;
-        Test(() => {
-                        var outPut = ""2""+ testString + testInt.ToString() + testFloat.ToString();
-                        var otherVar = testString + testInt.ToString();
-                        return outPut;
-                   });
-        Test(() => ""4"" + testString, ""explicit-value"");
-    }
-}
-";
-            var compilation = CreateCompilation(source, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
-            CompileAndVerify(compilation, expectedOutput: @"2test_val11.12345, () => {
-                        var outPut = ""2""+ ""test_val"" + 1.ToString() + 1.12345.ToString();
-                        var otherVar = ""test_val"" + 1.ToString();
-                        return outPut;
-                   }
-4test_val, explicit-value").VerifyDiagnostics();
-        }
-
-        [ConditionalFact(typeof(CoreClrOnly))]
         public void TestGoodCallerArgumentExpressionAttribute_MultipleAttributes()
         {
             string source = @"
@@ -863,6 +802,120 @@ public static class Program
 
             var compilation = CreateCompilation(source, targetFramework: TargetFramework.NetCoreApp, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
             CompileAndVerify(compilation, expectedOutput: "myIntegerExpression * 2").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
+        public void TestGoodCallerArgumentExpressionAttribute_ResolveConstants_LambdaExppressionMultipleConstants()
+        {
+            string source = @"
+using System;
+using System.Runtime.CompilerServices;
+
+namespace System.Runtime.CompilerServices
+{
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    public sealed class CallerArgumentExpressionAttribute : Attribute
+    {
+        public CallerArgumentExpressionAttribute(string parameterName)
+        {
+            ParameterName = parameterName;
+            ResolveConstants = false;
+        }
+
+        public CallerArgumentExpressionAttribute(string parameterName, bool resolveConstants)
+        {
+            ParameterName = parameterName;
+            ResolveConstants = resolveConstants;
+        }
+        public string ParameterName { get; }
+        public bool ResolveConstants { get; }
+    }
+}
+
+class Program
+{
+    const string i = nameof(i);
+    public static int Test(Func<string> i, [CallerArgumentExpression(i, true)] string s = ""<default-arg>"")
+    {
+        string a = i();
+        Console.WriteLine($""{a}, {s}"");
+        return 1;
+    }
+
+    public static void Main()
+    {
+        const string testString = ""test_val"";
+        const int testInt = 1;
+        const float testFloat = 1.12345f;
+        Test(() => ""2""+ testString + testInt.ToString() + testFloat.ToString());
+        Test(() => ""4"" + testString, ""explicit-value"");
+    }
+}
+";
+            var compilation = CreateCompilation(source, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: @"2test_val11.12345, () => ""2""+ ""test_val"" + 1.ToString() + 1.12345.ToString()
+4test_val, explicit-value").VerifyDiagnostics();
+        }
+
+        [ConditionalFact(typeof(CoreClrOnly))]
+        public void TestGoodCallerArgumentExpressionAttribute_ResolveConstants_BodiedAnonymousFunctionWithMultipleConstants()
+        {
+            string source = @"
+using System;
+using System.Runtime.CompilerServices;
+
+namespace System.Runtime.CompilerServices
+{
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    public sealed class CallerArgumentExpressionAttribute : Attribute
+    {
+        public CallerArgumentExpressionAttribute(string parameterName)
+        {
+            ParameterName = parameterName;
+            ResolveConstants = false;
+        }
+
+        public CallerArgumentExpressionAttribute(string parameterName, bool resolveConstants)
+        {
+            ParameterName = parameterName;
+            ResolveConstants = resolveConstants;
+        }
+        public string ParameterName { get; }
+        public bool ResolveConstants { get; }
+    }
+}
+
+class Program
+{
+    const string i = nameof(i);
+    public static int Test(Func<string> i, [CallerArgumentExpression(i, true)] string s = ""<default-arg>"")
+    {
+        string a = i();
+        Console.WriteLine($""{a}, {s}"");
+        return 1;
+    }
+
+    public static void Main()
+    {
+        const string testString = ""test_val"";
+        const int testInt = 1;
+        const float testFloat = 1.12345f;
+        Test(() => {
+                        var outPut = ""2""+ testString + testInt.ToString() + testFloat.ToString();
+                        var otherVar = testString + testInt.ToString();
+                        return outPut;
+                   });
+        Test(() => ""4"" + testString, ""explicit-value"");
+    }
+}
+";
+            var compilation = CreateCompilation(source, options: TestOptions.ReleaseExe, parseOptions: TestOptions.Regular10);
+            CompileAndVerify(compilation, expectedOutput: @"2test_val11.12345, () => {
+                        var outPut = ""2""+ ""test_val"" + 1.ToString() + 1.12345.ToString();
+                        var otherVar = ""test_val"" + 1.ToString();
+                        return outPut;
+                   }
+4test_val, explicit-value").VerifyDiagnostics();
         }
 
         [ConditionalFact(typeof(CoreClrOnly))]
