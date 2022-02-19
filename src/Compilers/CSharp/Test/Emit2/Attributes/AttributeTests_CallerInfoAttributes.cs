@@ -5998,25 +5998,5 @@ void M(int i, [CallerArgumentExpression(""i"")] in string s = ""default value"")
 
             CompileAndVerify(comp, expectedOutput: "1 + 1").VerifyDiagnostics();
         }
-
-        [ConditionalFact(typeof(CoreClrOnly))]
-        public void CallerArgumentExpression_OnRefParameter04()
-        {
-            var comp = CreateCompilation(@"
-using System;
-using System.Runtime.CompilerServices;
-
-const int addValue = 1;
-
-M(1 + addValue);
-
-void M(int i, [CallerArgumentExpression(""i"", true)] in string s = ""default value"")
-{
-    Console.WriteLine(s);
-}
-", targetFramework: TargetFramework.NetCoreApp);
-
-            CompileAndVerify(comp, expectedOutput: "1 + 1").VerifyDiagnostics();
-        }
     }
 }
