@@ -645,8 +645,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                             }
                         }
 
-                        if (numArgs == 2 && constructorArguments[1].TryDecodeValue(SpecialType.System_Boolean, out bool resolveConstants))
+                        if (numArgs == 2)
                         {
+                            var isBoolean = constructorArguments[1].TryDecodeValue(SpecialType.System_Boolean, out bool resolveConstants);
+                            if (!isBoolean) index = -1;
                             arguments.GetOrCreateData<ParameterEarlyWellKnownAttributeData>()
                                 .CallerArgumentExpressionResolveConstants = resolveConstants;
                         }
