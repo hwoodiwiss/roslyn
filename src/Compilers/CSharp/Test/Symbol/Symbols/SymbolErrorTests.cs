@@ -10548,20 +10548,65 @@ class C
     {
         return 0;
     }
+    public static int operator >>>(int c1, int c2) // CS0564
+    {
+        return 0;
+    }
     static void Main()
     {
     }
 }
-";
-            var comp = CreateCompilation(text);
-            comp.VerifyDiagnostics(
-                // (4,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type, and the type of the second operand must be int
-                //     public static int operator <<(C c1, C c2) // CS0564
-                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, "<<"),
 
-                // (8,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type, and the type of the second operand must be int
+class C1
+{
+    public static int operator <<(C1 c1, int c2)
+    {
+        return 0;
+    }
+}
+
+class C2
+{
+    public static int operator <<(C2 c1, int? c2)
+    {
+        return 0;
+    }
+}
+";
+            var comp = CreateCompilation(text, parseOptions: TestOptions.RegularPreview);
+            comp.VerifyDiagnostics(
+                // (8,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type
                 //     public static int operator >>(int c1, int c2) // CS0564
-                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>")
+                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>").WithLocation(8, 32),
+                // (12,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type, and the type of the second operand must be int
+                //     public static int operator >>>(int c1, int c2) // CS0564
+                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>>").WithLocation(12, 32)
+                );
+
+            comp = CreateCompilation(text, parseOptions: TestOptions.Regular10);
+            comp.VerifyDiagnostics(
+                // (4,32): error CS8652: The feature 'relaxed shift operator' is currently in Preview and *unsupported*. To use Preview features, use the 'preview' language version.
+                //     public static int operator <<(C c1, C c2) // CS0564
+                Diagnostic(ErrorCode.ERR_FeatureInPreview, "<<").WithArguments("relaxed shift operator").WithLocation(4, 32),
+                // (8,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type
+                //     public static int operator >>(int c1, int c2) // CS0564
+                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>").WithLocation(8, 32),
+                // (12,32): error CS8652: The feature 'unsigned right shift' is currently in Preview and *unsupported*. To use Preview features, use the 'preview' language version.
+                //     public static int operator >>>(int c1, int c2) // CS0564
+                Diagnostic(ErrorCode.ERR_FeatureInPreview, ">>>").WithArguments("unsigned right shift").WithLocation(12, 32),
+                // (12,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type, and the type of the second operand must be int
+                //     public static int operator >>>(int c1, int c2) // CS0564
+                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>>").WithLocation(12, 32)
+                );
+
+            comp = CreateCompilation(text, parseOptions: TestOptions.RegularNext);
+            comp.VerifyDiagnostics(
+                // (8,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type
+                //     public static int operator >>(int c1, int c2) // CS0564
+                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>").WithLocation(8, 32),
+                // (12,32): error CS0564: The first operand of an overloaded shift operator must have the same type as the containing type, and the type of the second operand must be int
+                //     public static int operator >>>(int c1, int c2) // CS0564
+                Diagnostic(ErrorCode.ERR_BadShiftOperatorSignature, ">>>").WithLocation(12, 32)
                 );
         }
 
@@ -10957,6 +11002,7 @@ public class C
     public static implicit operator void(C c1) { }
     public static void operator +(C c) { }
     public static void operator >>(C c, int x) { }
+    public static void operator >>>(C c, int x) { }
 }
 ";
             var comp = CreateCompilation(text);
@@ -10967,15 +11013,18 @@ public class C
                 // (5,33): error CS0590: User-defined operators cannot return void
                 //     public static implicit operator void(C c1) { }
                 Diagnostic(ErrorCode.ERR_OperatorCantReturnVoid, "void"),
-// (5,46): error CS1547: Keyword 'void' cannot be used in this context
-//     public static implicit operator void(C c1) { }
-Diagnostic(ErrorCode.ERR_NoVoidHere, "void"),
+                // (5,46): error CS1547: Keyword 'void' cannot be used in this context
+                //     public static implicit operator void(C c1) { }
+                Diagnostic(ErrorCode.ERR_NoVoidHere, "void"),
                 // (6,33): error CS0590: User-defined operators cannot return void
                 //     public static void operator +(C c) { }
                 Diagnostic(ErrorCode.ERR_OperatorCantReturnVoid, "+"),
                 // (73): error CS0590: User-defined operators cannot return void
                 //     public static void operator >>(C c, int x) { }
-                Diagnostic(ErrorCode.ERR_OperatorCantReturnVoid, ">>")
+                Diagnostic(ErrorCode.ERR_OperatorCantReturnVoid, ">>"),
+                // (74): error CS0590: User-defined operators cannot return void
+                //     public static void operator >>>(C c, int x) { }
+                Diagnostic(ErrorCode.ERR_OperatorCantReturnVoid, ">>>")
                 );
         }
 
