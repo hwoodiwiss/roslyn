@@ -23,7 +23,7 @@ namespace Microsoft.CodeAnalysis.Diagnostics
     [ExportIncrementalAnalyzerProvider(WellKnownSolutionCrawlerAnalyzers.Diagnostic, workspaceKinds: null)]
     internal partial class DefaultDiagnosticAnalyzerService : IIncrementalAnalyzerProvider, IDiagnosticUpdateSource
     {
-        private readonly DiagnosticAnalyzerInfoCache _analyzerInfoCache;
+        private readonly DiagnosticAnalyzerInfoCache _analyzerInfoCache = new();
         private readonly IGlobalOptionService _globalOptions;
 
         [ImportingConstructor]
@@ -33,7 +33,6 @@ namespace Microsoft.CodeAnalysis.Diagnostics
             IGlobalOptionService globalOptions)
         {
             _globalOptions = globalOptions;
-            _analyzerInfoCache = new DiagnosticAnalyzerInfoCache();
             registrationService.Register(this);
             _globalOptions = globalOptions;
         }
@@ -56,7 +55,7 @@ namespace Microsoft.CodeAnalysis.Diagnostics
         internal void RaiseDiagnosticsUpdated(DiagnosticsUpdatedArgs state)
             => DiagnosticsUpdated?.Invoke(this, state);
 
-        private class DefaultDiagnosticIncrementalAnalyzer : IIncrementalAnalyzer
+        private sealed class DefaultDiagnosticIncrementalAnalyzer : IIncrementalAnalyzer
         {
             private readonly DefaultDiagnosticAnalyzerService _service;
             private readonly Workspace _workspace;
@@ -67,18 +66,23 @@ namespace Microsoft.CodeAnalysis.Diagnostics
                 _service = service;
                 _workspace = workspace;
                 _diagnosticAnalyzerRunner = new InProcOrRemoteHostAnalyzerRunner(service._analyzerInfoCache);
+                _service._globalOptions.OptionChanged += OnGlobalOptionChanged;
             }
 
-            public bool NeedsReanalysisOnOptionChanged(object sender, OptionChangedEventArgs e)
+            public void Shutdown()
+            {
+                _service._globalOptions.OptionChanged -= OnGlobalOptionChanged;
+            }
+
+            private void OnGlobalOptionChanged(object sender, OptionChangedEventArgs e)
             {
                 if (e.Option == InternalRuntimeDiagnosticOptions.Syntax ||
                     e.Option == InternalRuntimeDiagnosticOptions.Semantic ||
                     e.Option == InternalRuntimeDiagnosticOptions.ScriptSemantic)
                 {
-                    return true;
+                    var service = _workspace.Services.GetService<ISolutionCrawlerService>();
+                    service?.Reanalyze(_workspace, this, projectIds: null, documentIds: null, highPriority: false);
                 }
-
-                return false;
             }
 
             public Task AnalyzeSyntaxAsync(Document document, InvocationReasons reasons, CancellationToken cancellationToken)

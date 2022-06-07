@@ -22,15 +22,14 @@ namespace Microsoft.CodeAnalysis.SolutionCrawler
         internal sealed partial class WorkCoordinator
         {
             private readonly Registration _registration;
-            private readonly object _gate;
+            private readonly object _gate = new();
 
-            private readonly LogAggregator _logAggregator;
+            private readonly LogAggregator _logAggregator = new();
             private readonly IAsynchronousOperationListener _listener;
-            private readonly IOptionService _optionService;
             private readonly IDocumentTrackingService _documentTrackingService;
             private readonly IWorkspaceConfigurationService? _workspaceConfigurationService;
 
-            private readonly CancellationTokenSource _shutdownNotificationSource;
+            private readonly CancellationTokenSource _shutdownNotificationSource = new();
             private readonly CancellationToken _shutdownToken;
             private readonly TaskQueue _eventProcessingQueue;
 
@@ -44,18 +43,13 @@ namespace Microsoft.CodeAnalysis.SolutionCrawler
                  bool initializeLazily,
                  Registration registration)
             {
-                _logAggregator = new LogAggregator();
-
                 _registration = registration;
-                _gate = new object();
 
                 _listener = listener;
-                _optionService = _registration.Workspace.Services.GetRequiredService<IOptionService>();
                 _documentTrackingService = _registration.Workspace.Services.GetRequiredService<IDocumentTrackingService>();
                 _workspaceConfigurationService = _registration.Workspace.Services.GetService<IWorkspaceConfigurationService>();
 
                 // event and worker queues
-                _shutdownNotificationSource = new CancellationTokenSource();
                 _shutdownToken = _shutdownNotificationSource.Token;
 
                 _eventProcessingQueue = new TaskQueue(listener, TaskScheduler.Default);
@@ -79,10 +73,6 @@ namespace Microsoft.CodeAnalysis.SolutionCrawler
 
                 // subscribe to active document changed event for active file background analysis scope.
                 _documentTrackingService.ActiveDocumentChanged += OnActiveDocumentSwitched;
-
-                // subscribe to option changed event after all required fields are set
-                // otherwise, we can get null exception when running OnOptionChanged handler
-                _optionService.OptionChanged += OnOptionChanged;
             }
 
             public int CorrelationId => _registration.CorrelationId;
@@ -99,7 +89,6 @@ namespace Microsoft.CodeAnalysis.SolutionCrawler
 
             public void Shutdown(bool blockingShutdown)
             {
-                _optionService.OptionChanged -= OnOptionChanged;
                 _documentTrackingService.ActiveDocumentChanged -= OnActiveDocumentSwitched;
 
                 // detach from the workspace
@@ -135,29 +124,11 @@ namespace Microsoft.CodeAnalysis.SolutionCrawler
                         SolutionCrawlerLogger.LogWorkCoordinatorShutdownTimeout(CorrelationId);
                     }
                 }
-            }
 
-            private void OnOptionChanged(object? sender, OptionChangedEventArgs e)
-            {
-                ReanalyzeOnOptionChange(sender, e);
-            }
-
-            private void ReanalyzeOnOptionChange(object? sender, OptionChangedEventArgs e)
-            {
-                // get off from option changed event handler since it runs on UI thread
-                // getting analyzer can be slow for the very first time since it is lazily initialized
-                _eventProcessingQueue.ScheduleTask(nameof(ReanalyzeOnOptionChange), () =>
+                foreach (var analyzer in _documentAndProjectWorkerProcessor.Analyzers)
                 {
-                    // let each analyzer decide what they want on option change
-                    foreach (var analyzer in _documentAndProjectWorkerProcessor.Analyzers)
-                    {
-                        if (analyzer.NeedsReanalysisOnOptionChanged(sender, e))
-                        {
-                            var scope = new ReanalyzeScope(_registration.GetSolutionToAnalyze().Id);
-                            Reanalyze(analyzer, scope);
-                        }
-                    }
-                }, _shutdownToken);
+                    (analyzer as IDisposable)?.Dispose();
+                }
             }
 
             public void Reanalyze(IIncrementalAnalyzer analyzer, ReanalyzeScope scope, bool highPriority = false)
