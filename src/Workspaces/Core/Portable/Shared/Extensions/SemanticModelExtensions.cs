@@ -93,7 +93,7 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
         public static TokenSemanticInfo GetSemanticInfo(
             this SemanticModel semanticModel,
             SyntaxToken token,
-            HostWorkspaceServices services,
+            SolutionServices services,
             CancellationToken cancellationToken)
         {
             var languageServices = services.GetLanguageServices(token.Language);
@@ -217,7 +217,7 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
                 return false;
 
             var enumerableType = semanticModel.Compilation.IEnumerableOfTType();
-            return type.AllInterfaces.Any(i => i.OriginalDefinition.Equals(enumerableType));
+            return type.AllInterfaces.Any(static (i, enumerableType) => i.OriginalDefinition.Equals(enumerableType), enumerableType);
         }
 
         private static bool TryGeneratePluralizedNameFromTypeArgument(

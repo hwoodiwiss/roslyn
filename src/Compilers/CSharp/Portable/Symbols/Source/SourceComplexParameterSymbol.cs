@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -19,7 +18,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
     /// <summary>
     /// A source parameter, potentially with a default value, attributes, etc.
     /// </summary>
-    internal class SourceComplexParameterSymbol : SourceParameterSymbol, IAttributeTargetSymbol
+    internal abstract class SourceComplexParameterSymbolBase : SourceParameterSymbol, IAttributeTargetSymbol
     {
         [Flags]
         private enum ParameterSyntaxKind : byte
@@ -33,11 +32,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private readonly SyntaxReference _syntaxRef;
         private readonly ParameterSyntaxKind _parameterSyntaxKind;
 
-        private CustomAttributesBag<CSharpAttributeData> _lazyCustomAttributesBag;
         private ThreeState _lazyHasOptionalAttribute;
+        private CustomAttributesBag<CSharpAttributeData> _lazyCustomAttributesBag;
         protected ConstantValue _lazyDefaultSyntaxValue;
 
-        internal SourceComplexParameterSymbol(
+        protected SourceComplexParameterSymbolBase(
             Symbol owner,
             int ordinal,
             TypeWithAnnotations parameterType,
@@ -46,8 +45,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             ImmutableArray<Location> locations,
             SyntaxReference syntaxRef,
             bool isParams,
-            bool isExtensionMethodThis)
-            : base(owner, parameterType, ordinal, refKind, name, locations)
+            bool isExtensionMethodThis,
+            DeclarationScope scope)
+            : base(owner, parameterType, ordinal, refKind, scope, name, locations)
         {
             Debug.Assert((syntaxRef == null) || (syntaxRef.GetSyntax().IsKind(SyntaxKind.Parameter)));
 
@@ -205,6 +205,22 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         }
 
 #nullable enable
+
+        internal sealed override DeclarationScope EffectiveScope
+        {
+            get
+            {
+                var scope = DeclaredScope;
+                if (scope != DeclarationScope.Unscoped &&
+                    HasUnscopedRefAttribute)
+                {
+                    return DeclarationScope.Unscoped;
+                }
+                return scope;
+            }
+        }
+
+        private bool HasUnscopedRefAttribute => GetEarlyDecodedWellKnownAttributeData()?.HasUnscopedRefAttribute == true;
 
         internal static SyntaxNode? GetDefaultValueSyntaxForIsNullableAnalysisEnabled(ParameterSyntax? parameterSyntax) =>
             parameterSyntax?.Default?.Value;
@@ -601,6 +617,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             {
                 return EarlyDecodeAttributeForDefaultParameterValue(AttributeDescription.DateTimeConstantAttribute, ref arguments);
             }
+            else if (CSharpAttributeData.IsTargetEarlyAttribute(arguments.AttributeType, arguments.AttributeSyntax, AttributeDescription.UnscopedRefAttribute))
+            {
+                // We can't bind the attribute here because that might lead to a cycle.
+                // Instead, simply record that the attribute exists and bind later.
+                arguments.GetOrCreateData<ParameterEarlyWellKnownAttributeData>().HasUnscopedRefAttribute = true;
+                return (null, null);
+            }
             else if (!IsOnPartialImplementation(arguments.AttributeSyntax))
             {
                 if (CSharpAttributeData.IsTargetEarlyAttribute(arguments.AttributeType, arguments.AttributeSyntax, AttributeDescription.CallerLineNumberAttribute))
@@ -759,7 +782,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 ValidateCallerArgumentExpressionAttribute(arguments.AttributeSyntaxOpt, attribute, diagnostics);
             }
             else if (ReportExplicitUseOfReservedAttributes(in arguments,
-                ReservedAttributes.DynamicAttribute | ReservedAttributes.IsReadOnlyAttribute | ReservedAttributes.IsUnmanagedAttribute | ReservedAttributes.IsByRefLikeAttribute | ReservedAttributes.TupleElementNamesAttribute | ReservedAttributes.NullableAttribute | ReservedAttributes.NativeIntegerAttribute))
+                ReservedAttributes.DynamicAttribute |
+                ReservedAttributes.IsReadOnlyAttribute |
+                ReservedAttributes.IsUnmanagedAttribute |
+                ReservedAttributes.IsByRefLikeAttribute |
+                ReservedAttributes.TupleElementNamesAttribute |
+                ReservedAttributes.NullableAttribute |
+                ReservedAttributes.NativeIntegerAttribute |
+                ReservedAttributes.ScopedRefAttribute))
             {
             }
             else if (attribute.IsTargetAttribute(this, AttributeDescription.AllowNullAttribute))
@@ -802,6 +832,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             else if (attribute.GetTargetAttributeSignatureIndex(this, AttributeDescription.InterpolatedStringHandlerArgumentAttribute) is (0 or 1) and var index)
             {
                 DecodeInterpolatedStringHandlerArgumentAttribute(ref arguments, diagnostics, index);
+            }
+            else if (attribute.IsTargetAttribute(this, AttributeDescription.UnscopedRefAttribute))
+            {
+                if (!this.IsValidUnscopedRefAttributeTarget())
+                {
+                    diagnostics.Add(ErrorCode.ERR_UnscopedRefAttributeUnsupportedTarget, arguments.AttributeSyntaxOpt.Location);
+                }
+            }
+        }
+
+        private bool IsValidUnscopedRefAttributeTarget()
+        {
+            switch (RefKind)
+            {
+                case RefKind.Out:
+                    return true;
+                case RefKind.Ref:
+                    var type = Type;
+                    return type is null || type.IsErrorTypeOrRefLikeType();
+                default:
+                    return false;
             }
         }
 
@@ -1428,7 +1479,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override bool IsExtensionMethodThis => (_parameterSyntaxKind & ParameterSyntaxKind.ExtensionThisParameter) != 0;
 
-        public override ImmutableArray<CustomModifier> RefCustomModifiers => ImmutableArray<CustomModifier>.Empty;
+        public abstract override ImmutableArray<CustomModifier> RefCustomModifiers { get; }
 
         internal override void ForceComplete(SourceLocation locationOpt, CancellationToken cancellationToken)
         {
@@ -1438,11 +1489,31 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         }
     }
 
-    internal sealed class SourceComplexParameterSymbolWithCustomModifiersPrecedingByRef : SourceComplexParameterSymbol
+    internal sealed class SourceComplexParameterSymbol : SourceComplexParameterSymbolBase
+    {
+        internal SourceComplexParameterSymbol(
+            Symbol owner,
+            int ordinal,
+            TypeWithAnnotations parameterType,
+            RefKind refKind,
+            string name,
+            ImmutableArray<Location> locations,
+            SyntaxReference syntaxRef,
+            bool isParams,
+            bool isExtensionMethodThis,
+            DeclarationScope scope)
+            : base(owner, ordinal, parameterType, refKind, name, locations, syntaxRef, isParams, isExtensionMethodThis, scope)
+        {
+        }
+
+        public override ImmutableArray<CustomModifier> RefCustomModifiers => ImmutableArray<CustomModifier>.Empty;
+    }
+
+    internal sealed class SourceComplexParameterSymbolWithCustomModifiersPrecedingRef : SourceComplexParameterSymbolBase
     {
         private readonly ImmutableArray<CustomModifier> _refCustomModifiers;
 
-        internal SourceComplexParameterSymbolWithCustomModifiersPrecedingByRef(
+        internal SourceComplexParameterSymbolWithCustomModifiersPrecedingRef(
             Symbol owner,
             int ordinal,
             TypeWithAnnotations parameterType,
@@ -1452,8 +1523,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             ImmutableArray<Location> locations,
             SyntaxReference syntaxRef,
             bool isParams,
-            bool isExtensionMethodThis)
-            : base(owner, ordinal, parameterType, refKind, name, locations, syntaxRef, isParams, isExtensionMethodThis)
+            bool isExtensionMethodThis,
+            DeclarationScope scope)
+            : base(owner, ordinal, parameterType, refKind, name, locations, syntaxRef, isParams, isExtensionMethodThis, scope)
         {
             Debug.Assert(!refCustomModifiers.IsEmpty);
 

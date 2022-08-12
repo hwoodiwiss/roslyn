@@ -57,9 +57,9 @@ namespace Microsoft.CodeAnalysis.LanguageServices
         int StringLiteralToken { get; }
         int? SingleLineRawStringLiteralToken { get; }
         int? MultiLineRawStringLiteralToken { get; }
-        int? UTF8StringLiteralToken { get; }
-        int? UTF8SingleLineRawStringLiteralToken { get; }
-        int? UTF8MultiLineRawStringLiteralToken { get; }
+        int? Utf8StringLiteralToken { get; }
+        int? Utf8SingleLineRawStringLiteralToken { get; }
+        int? Utf8MultiLineRawStringLiteralToken { get; }
 
         #endregion
 
@@ -121,6 +121,9 @@ namespace Microsoft.CodeAnalysis.LanguageServices
         int? IndexExpression { get; }
         int InterpolatedStringExpression { get; }
         int InvocationExpression { get; }
+        int IsTypeExpression { get; }
+        int? IsNotTypeExpression { get; }
+        int? IsPatternExpression { get; }
         int LogicalAndExpression { get; }
         int LogicalOrExpression { get; }
         int LogicalNotExpression { get; }
@@ -139,10 +142,25 @@ namespace Microsoft.CodeAnalysis.LanguageServices
 
         #endregion
 
+        #region patterns
+
+        int? AndPattern { get; }
+        int? ConstantPattern { get; }
+        int? DeclarationPattern { get; }
+        int? NotPattern { get; }
+        int? OrPattern { get; }
+        int? ParenthesizedPattern { get; }
+        int? RecursivePattern { get; }
+        int? TypePattern { get; }
+        int? VarPattern { get; }
+
+        #endregion
+
         #region statements
 
         int ExpressionStatement { get; }
         int ForEachStatement { get; }
+        int IfStatement { get; }
         int LocalDeclarationStatement { get; }
         int? LocalFunctionStatement { get; }
         int LockStatement { get; }
@@ -180,6 +198,7 @@ namespace Microsoft.CodeAnalysis.LanguageServices
 
         int Interpolation { get; }
         int InterpolatedStringText { get; }
+        int? IndexerMemberCref { get; }
 
         #endregion
     }

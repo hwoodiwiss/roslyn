@@ -39,9 +39,6 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
         private static TestWorkspace CreateWorkspace(Type[] additionalParts = null)
              => new TestWorkspace(composition: FeaturesTestCompositions.Features.WithTestHostParts(TestHost.OutOfProcess).AddParts(additionalParts));
 
-        private static Solution WithChangedOptionsFromRemoteWorkspace(Solution solution, RemoteWorkspace remoteWorkpace)
-            => solution.WithChangedOptionsFrom(remoteWorkpace.Options);
-
         [Fact]
         public async Task TestRemoteHostSynchronize()
         {
@@ -58,8 +55,6 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
             await VerifyAssetStorageAsync(client, solution);
 
             var remoteWorkpace = client.GetRemoteWorkspace();
-
-            solution = WithChangedOptionsFromRemoteWorkspace(solution, remoteWorkpace);
 
             Assert.Equal(
                 await solution.State.GetChecksumAsync(CancellationToken.None),
@@ -113,7 +108,7 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
 // TODO: Test";
 
             using var workspace = CreateWorkspace();
-            workspace.GlobalOptions.SetGlobalOption(new OptionKey(TodoCommentOptionsStorage.TokenList), "HACK:1");
+            workspace.GlobalOptions.SetGlobalOption(new OptionKey(TodoCommentOptionsStorage.TokenList), ImmutableArray.Create("HACK:1"));
             workspace.InitializeDocuments(LanguageNames.CSharp, files: new[] { source }, openDocuments: false);
 
             using var client = await InProcRemoteHostClient.GetTestClientAsync(workspace).ConfigureAwait(false);
@@ -136,7 +131,7 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
 
             using var listener = new TodoCommentsListener(
                 workspace.GlobalOptions,
-                workspace.Services,
+                workspace.Services.SolutionServices,
                 workspace.GetService<IAsynchronousOperationListenerProvider>(),
                 onTodoCommentsUpdated: (documentId, _, newComments) => resultSource.SetResult((documentId, newComments)),
                 disposalToken: cancellationTokenSource.Token);
@@ -160,7 +155,7 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
 
             resultSource = new TaskCompletionSource<(DocumentId, ImmutableArray<TodoCommentData>)>();
 
-            workspace.GlobalOptions.SetGlobalOption(new OptionKey(TodoCommentOptionsStorage.TokenList), "TODO:1");
+            workspace.GlobalOptions.SetGlobalOption(new OptionKey(TodoCommentOptionsStorage.TokenList), ImmutableArray.Create("TODO:1"));
 
             (documentId, items) = await resultSource.Task.WithTimeout(TimeSpan.FromMinutes(1));
             Assert.Equal(solution.Projects.Single().Documents.Single().Id, documentId);
@@ -258,7 +253,7 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
         [Fact]
         public async Task TestUnknownProject()
         {
-            var workspace = CreateWorkspace(new[] { typeof(NoCompilationLanguageServiceFactory) });
+            var workspace = CreateWorkspace(new[] { typeof(NoCompilationLanguageService) });
             var solution = workspace.CurrentSolution.AddProject("unknown", "unknown", NoCompilationConstants.LanguageName).Solution;
 
             using var client = await InProcRemoteHostClient.GetTestClientAsync(workspace).ConfigureAwait(false);
@@ -271,15 +266,12 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
             // See "RemoteSupportedLanguages.IsSupported"
             Assert.Empty(remoteWorkspace.CurrentSolution.Projects);
 
-            solution = WithChangedOptionsFromRemoteWorkspace(solution, remoteWorkspace);
-
             // No serializable remote options affect options checksum, so the checksums should match.
             Assert.Equal(
                 await solution.State.GetChecksumAsync(CancellationToken.None),
                 await remoteWorkspace.CurrentSolution.State.GetChecksumAsync(CancellationToken.None));
 
             solution = solution.RemoveProject(solution.ProjectIds.Single());
-            solution = WithChangedOptionsFromRemoteWorkspace(solution, remoteWorkspace);
 
             Assert.Equal(
                 await solution.State.GetChecksumAsync(CancellationToken.None),
@@ -303,8 +295,6 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
             solution = workspace.CurrentSolution;
             await UpdatePrimaryWorkspace(client, solution);
             await VerifyAssetStorageAsync(client, solution);
-
-            solution = WithChangedOptionsFromRemoteWorkspace(solution, remoteWorkspace);
 
             Assert.Equal(
                 await solution.State.GetChecksumAsync(CancellationToken.None),
@@ -402,7 +392,7 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
                             metadataReferences: new [] { MetadataReference.CreateFromFile(file.Path) })
                 });
 
-            using var remoteWorkspace = new RemoteWorkspace(FeaturesTestCompositions.RemoteHost.GetHostServices(), WorkspaceKind.RemoteWorkspace);
+            using var remoteWorkspace = new RemoteWorkspace(FeaturesTestCompositions.RemoteHost.GetHostServices());
 
             // this shouldn't throw exception
             var (solution, updated) = await remoteWorkspace.GetTestAccessor().TryUpdateWorkspaceCurrentSolutionAsync(
@@ -475,8 +465,8 @@ namespace Roslyn.VisualStudio.Next.UnitTests.Remote
 
         private static void VerifyStates(Solution solution1, Solution solution2, string projectName, ImmutableArray<string> documentNames)
         {
-            Assert.True(solution1.Workspace is RemoteWorkspace);
-            Assert.True(solution2.Workspace is RemoteWorkspace);
+            Assert.Equal(WorkspaceKind.RemoteWorkspace, solution1.WorkspaceKind);
+            Assert.Equal(WorkspaceKind.RemoteWorkspace, solution2.WorkspaceKind);
 
             SetEqual(solution1.ProjectIds, solution2.ProjectIds);
 
