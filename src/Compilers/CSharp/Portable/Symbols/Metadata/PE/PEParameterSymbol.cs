@@ -1075,6 +1075,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Metadata.PE
                         out _,
                         AttributeDescription.ScopedRefAttribute,
                         out _,
+                        default,
+                        out _,
                         default);
 
                 if (!paramArrayAttribute.IsNil || !constantAttribute.IsNil)
